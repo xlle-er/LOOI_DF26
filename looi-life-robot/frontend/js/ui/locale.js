@@ -361,6 +361,20 @@ AI & vision|AI 与视觉
 
 Take control|接管控制
 Control acquired|已接管控制
+Current firmware requires manually leaving the hotspot after this update.|当前设备固件不支持自动关闭，本次升级后请手动断开热点。
+After updating, leave the ESP hotspot and restore mobile data or internet Wi-Fi before starting AI companionship.|升级后请及时断开 ESP 热点，恢复流量或可上网的 Wi-Fi，再启动 AI 陪伴。
+Close ESP hotspot after update|升级后关闭 ESP 热点
+Requires device firmware support. Your phone decides whether internet reconnects automatically. Hold BOOT for 3 seconds to reopen the hotspot.|需要设备固件支持；手机是否自动恢复互联网由系统决定。长按 BOOT 3 秒可重新开启热点。
+Update accepted. Leave the ESP hotspot and restore internet before AI companionship; reconnect to verify the version.|升级成功，请断开 ESP 热点并恢复互联网，再使用 AI 陪伴；重连设备核对版本。
+1. While online, download and verify firmware. 2. Join the ESP hotspot. 3. Connect the device and upload the saved firmware. Keep power connected.|1. 有网时下载并校验固件。2. 连接 ESP 热点。3. 连接设备，上传已保存固件。升级期间保持供电。
+For the initial hotspot-only firmware, download the .bin first, then use the device panel at http://192.168.4.1 to upload it.|初版仅热点 OTA 固件：先下载 .bin，再连接热点，通过 http://192.168.4.1 的设备面板上传。
+Download firmware first|先下载固件
+Upload saved firmware|上传已保存固件
+Downloading and verifying firmware. Stay on an internet connection.|正在下载并校验固件，请保持互联网连接。
+Firmware saved. You can now join the ESP hotspot and upload without internet.|固件已保存，可以连接 ESP 热点，无需互联网即可上传。
+Uploading saved firmware. No internet connection is needed.|正在上传已保存固件，此步骤不需要互联网。
+Download firmware before joining the ESP hotspot|请先在联网时下载固件，再连接 ESP 热点
+Firmware size or image is invalid|固件大小或格式无效
 LOOI Apps|LOOI 客户端
 Choose your LOOI app|选择你的 LOOI 客户端
 Bring LOOI to your phone. Choose your platform to get started.|在手机上使用 LOOI，选择你的平台开始安装。
@@ -377,7 +391,7 @@ Choose a platform|选择平台
 const zh=new Map(entries),en=new Map(entries.map(([a,b])=>[b,a]));
 let selected=localStorage.getItem('looi.ui.language')||(navigator.language.startsWith('zh')?'zh-CN':'en');
 export function language(){return selected;}
-export function translate(text){const original=String(text),clean=original.replace(/\s+/g,' ').trim();const target=selected==='zh-CN'?(zh.get(clean)||clean):clean;return clean?original.replace(clean,target):original;}
+export function translate(text){const original=String(text),clean=original.replace(/\s+/g,' ').trim();const target=selected==='zh-CN'?(zh.get(clean)||(clean.startsWith('Ready offline: ')?'已下载，可离线上传：'+clean.slice(15):clean)):clean;return clean?original.replace(clean,target):original;}
 const textSources=new WeakMap(),textRendered=new WeakMap(),attributeSources=new WeakMap();
 function localize(node){
  if(node.nodeType===Node.TEXT_NODE){

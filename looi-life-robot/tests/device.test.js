@@ -24,3 +24,12 @@ test('bridge refuses cross-site requests and requires custom header',async()=>{
 });
 
 test('saved custom scenes preserve facial steps and remove empty scenes',async()=>{const {cleanStoredScenes,migrateStoredScenes}=await import('../frontend/js/device/scenarioMigration.js');const data=[{id:'old',steps:[{kind:'obsolete'}]},{id:'mixed',steps:[{kind:'obsolete'},{kind:'expression',expression:'happy'},{kind:'move'}]}];assert.deepEqual(cleanStoredScenes(data).map(x=>x.id),['mixed']);const map=new Map([['looi.customScenarios.v1',JSON.stringify(data)],['looi.providers.v1','unchanged']]);const storage={get length(){return map.size;},key:i=>[...map.keys()][i],getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)};migrateStoredScenes(storage);assert.equal(JSON.parse(map.get('looi.customScenarios.v1'))[0].steps.length,2);assert.equal(map.get('looi.providers.v1'),'unchanged');});
+
+test('offline package validation rejects corruption and incompatible metadata',async()=>{
+ const {verifyFirmware}=await import('../frontend/js/device/firmwareCache.js');const bytes=new Uint8Array(64);bytes[0]=0xe9;
+ const m={chip:'ESP32-S3',partition:'app3M_fat9M_16MB',size:64,sha256:'27585a5e85e1a2afcb9718bcfd03a0fd8822b4cfdfd06862e3a2c0cfd1c092eb'};
+ assert.doesNotThrow(()=>verifyFirmware(bytes.buffer,m));
+ const corrupt=bytes.slice();corrupt[3]=1;assert.throws(()=>verifyFirmware(corrupt.buffer,m),/checksum/);
+ assert.throws(()=>verifyFirmware(bytes.buffer,{...m,size:65}),/size/);
+ assert.throws(()=>verifyFirmware(bytes.buffer,{...m,chip:'ESP32'}),/Incompatible/);
+});

@@ -1,4 +1,5 @@
 import {sha256} from './sha256.js';
+import {verifyFirmware,savePreparedFirmware,loadPreparedFirmware} from './firmwareCache.js';
 export class DeviceNetworkClient {
   constructor({onLost=()=>{}}={}){this.session='';this.client='';this.info={};this.onLost=onLost;this.poll=null;this.busy=false;this.epoch=0;this.controlToken=0;this.motionEpoch=0;}
   async bridge(path,{body,bytes,headers={}}={}){
@@ -21,7 +22,9 @@ export class DeviceNetworkClient {
   }
   async disconnect(){try{if(this.session)await this.bridge('/disconnect',{body:{}});}finally{this.close();}}
   close(){this.epoch++;this.motionEpoch++;this.controlToken=0;clearInterval(this.poll);this.session='';}
-  async upload(file,expected){if(!file.name.endsWith('.bin')||file.size<32||file.size>3145728)throw Error('Select an application .bin (maximum 3 MB)');const bytes=await file.arrayBuffer(),digest=sha256(bytes);if(expected&&digest!==expected.toLowerCase())throw Error('Firmware checksum mismatch');await this.command({type:'ota_start'});clearInterval(this.poll);try{const r=await this.bridge('/upload',{bytes,headers:{'Content-Type':'application/octet-stream','X-Firmware-SHA256':digest}});this.close();return r;}catch(e){this.startPolling();throw e;}}
+  async upload(file,expected,closeHotspot=true){if(!file.name.endsWith('.bin')||file.size<32||file.size>3145728)throw Error('Select an application .bin (maximum 3 MB)');const bytes=await file.arrayBuffer(),digest=sha256(bytes);if(expected&&digest!==expected.toLowerCase())throw Error('Firmware checksum mismatch');await this.command({type:'ota_start',close_ap_after_update:closeHotspot});clearInterval(this.poll);try{const r=await this.bridge('/upload',{bytes,headers:{'Content-Type':'application/octet-stream','X-Firmware-SHA256':digest}});this.close();return r;}catch(e){this.startPolling();throw e;}}
   async release(){return this.bridge('/release');}
-  async install(release){const response=await fetch('/api/device/release/binary',{headers:{'X-Looi-Bridge':'1'}});if(!response.ok)throw Error((await response.json()).message||'Download failed');const blob=await response.blob();if(blob.size!==release.size)throw Error('Release size changed; check again');return this.upload(new File([blob],'looi-s3.bin'),release.sha256);}
+  async prepare(release){const response=await fetch('/api/device/release/binary',{headers:{'X-Looi-Bridge':'1'}});if(!response.ok)throw Error((await response.json()).message||'Download failed');const bytes=await response.arrayBuffer();verifyFirmware(bytes,release);await savePreparedFirmware(release,bytes);return release;}
+  async installPrepared(closeHotspot=true){const cached=await loadPreparedFirmware();if(!cached)throw Error('Download firmware before joining the ESP hotspot');verifyFirmware(cached.bytes,cached.release);return this.upload(new File([cached.bytes],'looi-s3.bin'),cached.release.sha256,closeHotspot);}
+
 }
