@@ -9,7 +9,13 @@ export function localHost(value='') {
   return p.map(Number).join('.');
 }
 export const RELEASE_MANIFEST='https://github.com/xlle-er/LOOI-DF26-Firmware/releases/latest/download/looi-s3-manifest.json';
-export function validRelease(m){if(m?.chip!=='ESP32-S3'||m?.partition!=='app3M_fat9M_16MB'||!Number.isInteger(m.size)||m.size<32||m.size>3145728||!/^\w[\w.+-]*$/.test(m.version)||!/^[0-9a-f]{64}$/i.test(m.sha256)||!m.url?.startsWith('https://github.com/xlle-er/LOOI-DF26-Firmware/releases/'))throw Error('Incompatible release manifest');return m;}
+export function validRelease(m){if(m?.chip!=='ESP32-S3'||!(m?.partition==='app3M_fat9M_16MB'&&(!m.board||m.board==='n16r8')||m?.partition==='looi_8m'&&m.board==='n8r8')||!Number.isInteger(m.size)||m.size<32||m.size>3145728||!/^\w[\w.+-]*$/.test(m.version)||!/^[0-9a-f]{64}$/i.test(m.sha256)||!m.url?.startsWith('https://github.com/xlle-er/LOOI-DF26-Firmware/releases/'))throw Error('Incompatible release manifest');return m;}
+export function manifestForBoard(board='n16r8',channel='stable'){
+ if(!['n16r8','n8r8'].includes(board))throw Error('Unsupported hardware board');
+ if(!['stable','preview'].includes(channel))throw Error('Unsupported update channel');
+ const url=board==='n8r8'?RELEASE_MANIFEST.replace('looi-s3-manifest','looi-s3-n8r8-manifest'):RELEASE_MANIFEST;
+ return channel==='preview'?url.replace('/latest/download/','/download/preview/'):url;
+}
 async function releaseFetch(url,limit){
   for(let i=0;i<6;i++){
     const u=new URL(url);if(u.protocol!=='https:'||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'].includes(u.hostname))throw Error('Untrusted release redirect');
@@ -44,8 +50,8 @@ export function createDeviceBridge(){
     const form=new FormData();form.append('firmware',new Blob([bytes]),'looi-s3.bin');
     res.json(await device(s,'/update',{method:'POST',body:form,headers:{'X-Firmware-Size':String(bytes.length),'X-Firmware-SHA256':req.get('X-Firmware-SHA256')??''}}));
   }));
-  router.get('/release',safe(async(req,res)=>res.json(validRelease(JSON.parse((await releaseFetch(RELEASE_MANIFEST,8192)).toString())))));
-  router.get('/release/binary',safe(async(req,res)=>{const m=validRelease(JSON.parse((await releaseFetch(RELEASE_MANIFEST,8192)).toString()));const bytes=await releaseFetch(m.url,3145728);res.set('X-Firmware-SHA256',m.sha256).type('application/octet-stream').send(bytes);}));
+  router.get('/release',safe(async(req,res)=>res.json({...validRelease(JSON.parse((await releaseFetch(manifestForBoard(req.query.board,req.query.channel),8192)).toString())),channel:req.query.channel||'stable'})));
+  router.get('/release/binary',safe(async(req,res)=>{const m=validRelease(JSON.parse((await releaseFetch(manifestForBoard(req.query.board,req.query.channel),8192)).toString()));const bytes=await releaseFetch(m.url,3145728);res.set('X-Firmware-SHA256',m.sha256).type('application/octet-stream').send(bytes);}));
   router.get('/discover',safe(async(_req,res)=>res.json(await discoverDevices())));
   return router;
 }

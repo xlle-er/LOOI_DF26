@@ -1,6 +1,8 @@
+export function preparedAllowed(release,includePreview=false){const channel=release?.channel??'stable';return channel==='stable'||channel==='preview'&&includePreview;}
 import {sha256} from './sha256.js';
 export function verifyFirmware(bytes,release){
- if(release?.chip!=='ESP32-S3'||release?.partition!=='app3M_fat9M_16MB'||!Number.isInteger(release.size)||release.size<32||release.size>3145728||!/^[0-9a-f]{64}$/i.test(release.sha256??''))throw Error('Incompatible release manifest');
+ if(!['stable','preview'].includes(release?.channel??'stable'))throw Error('Unknown firmware update channel');
+ if(release?.chip!=='ESP32-S3'||!(release?.partition==='app3M_fat9M_16MB'&&(!release.board||release.board==='n16r8')||release?.partition==='looi_8m'&&release.board==='n8r8')||!Number.isInteger(release.size)||release.size<32||release.size>3145728||!/^[0-9a-f]{64}$/i.test(release.sha256??''))throw Error('Incompatible release manifest');
  if(bytes.byteLength!==release.size||new Uint8Array(bytes)[0]!==0xe9)throw Error('Firmware size or image is invalid');
  if(sha256(bytes)!==release.sha256.toLowerCase())throw Error('Firmware checksum mismatch');
 }

@@ -296,6 +296,8 @@ Firmware update|固件升级
 Upload uses Wi-Fi. Keep power connected and verify the version after reconnecting.|上传使用 Wi-Fi。保持供电，升级后重连核对版本。
 Upload local firmware|上传本地固件
 Application firmware|应用固件
+Preview firmware updates|预览版更新
+Preview channel releases may not have completed hardware testing. Turn off to use stable releases.|预览通道的版本可能尚未完成硬件验证。关闭后使用稳定版本。
 Check for updates|检查在线版本
 Install online release|安装在线版本
 Exit update mode|退出升级模式

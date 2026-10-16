@@ -33,3 +33,28 @@ test('offline package validation rejects corruption and incompatible metadata',a
  assert.throws(()=>verifyFirmware(bytes.buffer,{...m,size:65}),/size/);
  assert.throws(()=>verifyFirmware(bytes.buffer,{...m,chip:'ESP32'}),/Incompatible/);
 });
+
+test('8MB OTA uses its own feed and cannot be mislabeled as 16MB',async()=>{
+ const {manifestForBoard}=await import('../backend/lib/device/bridge.js');
+ assert.match(manifestForBoard('n8r8'),/looi-s3-n8r8-manifest.json$/);assert.match(manifestForBoard('n16r8'),/looi-s3-manifest.json$/);assert.throws(()=>manifestForBoard('unknown'));
+ const bytes=new Uint8Array(64);bytes[0]=0xe9;
+ const m={version:'2.1.0',board:'n8r8',chip:'ESP32-S3',partition:'looi_8m',size:64,sha256:sha256(bytes),url:'https://github.com/xlle-er/LOOI-DF26-Firmware/releases/download/v2.1.0/looi-s3-n8r8.bin'};
+ assert.equal(validRelease(m),m);assert.throws(()=>validRelease({...m,board:'n16r8'}));
+ const {verifyFirmware}=await import('../frontend/js/device/firmwareCache.js');assert.doesNotThrow(()=>verifyFirmware(bytes.buffer,m));assert.throws(()=>verifyFirmware(bytes.buffer,{...m,board:'n16r8'}));
+});
+test('new hardware refuses old local images before entering OTA',async()=>{
+ const client=new DeviceNetworkClient();client.info={hardware_protocol:1,hardware_profile:{board:'n8r8'},partition:'looi_8m'};let called=false;client.command=async()=>{called=true;};
+ await assert.rejects(client.upload(new File([new Uint8Array(64)],'old.bin')),/Incompatible hardware/);assert.equal(called,false);
+});
+
+test('preview update channel is explicit and default feed stays stable',async()=>{
+ const {manifestForBoard}=await import('../backend/lib/device/bridge.js');
+ assert.match(manifestForBoard('n16r8'),/releases\/latest\/download\/looi-s3-manifest.json$/);
+ assert.match(manifestForBoard('n16r8','preview'),/releases\/download\/preview\/looi-s3-manifest.json$/);
+ assert.match(manifestForBoard('n8r8','preview'),/looi-s3-n8r8-manifest.json$/);
+ assert.throws(()=>manifestForBoard('n16r8','unknown'));
+ const {preparedAllowed}=await import('../frontend/js/device/firmwareCache.js');
+ assert(preparedAllowed({}));assert(!preparedAllowed({channel:'preview'}));assert(preparedAllowed({channel:'preview'},true));assert(!preparedAllowed({channel:'unknown'},true));
+ const oldStorage=globalThis.localStorage;globalThis.localStorage={getItem:()=>null};
+ try {const n=new DeviceNetworkClient();let last='';n.bridge=async path=>{last=path;return {};};await n.release();assert.match(last,/channel=stable$/);await n.release(true);assert.match(last,/channel=preview$/);}finally{globalThis.localStorage=oldStorage;}
+});
