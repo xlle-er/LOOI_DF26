@@ -1,0 +1,36 @@
+import {setLanguage,language} from '../ui/locale.js';
+export function mountDeviceManagement(robot){
+ const section=document.createElement('section');section.className='panel-card';section.id='deviceManagement';
+ section.innerHTML=`<h2>Device management</h2><label>Language <select id="deviceLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select></label>
+ <p>Connect to the ESP hotspot or the same LAN. Wi-Fi control uses the local bridge.</p>
+ <label>Device IP <input id="deviceHost" value="192.168.4.1" autocomplete="off"></label><label>Device password <input id="deviceAdmin" type="password" value="12345678" autocomplete="off"></label>
+ <div class="button-grid"><button id="deviceWifiConnect">Connect Wi-Fi</button><button id="deviceDiscover">Discover devices</button><button id="deviceRefresh">Refresh device</button></div><div id="deviceFound"></div><p id="deviceInfo"></p>
+ <h3>Wi-Fi setup</h3><label>Wi-Fi name <input id="deviceSsid" maxlength="32"></label><label>Wi-Fi password <input id="devicePassword" type="password" maxlength="63" autocomplete="new-password"></label><div class="button-grid"><button id="deviceScan">Scan Wi-Fi</button><button id="deviceConfigure">Save and connect</button><button id="deviceForget">Forget network</button></div><div id="deviceNetworks"></div>
+ <h3>Motor calibration</h3><p>Lift the wheels first. Tests last at most 300 ms. Saving stops the motors.</p><label><input type="checkbox" id="deviceLeft" checked> Invert left motor</label><label><input type="checkbox" id="deviceRight"> Invert right motor</label><label><input type="checkbox" id="deviceSwap"> Swap motor sides</label>
+ <div class="button-grid"><button id="deviceSave">Save direction</button><button id="deviceReset">Reset direction</button><button id="deviceReverseForward">Reverse forward/back</button><button id="deviceReverseSteering">Reverse steering</button></div><button id="deviceTakeControl">Take control</button><div id="deviceTests" class="button-grid"></div><button id="deviceStop" class="danger-button">Stop now</button>
+ <h3>Firmware update</h3><p>Upload uses Wi-Fi. Keep power connected and verify the version after reconnecting.</p><input id="deviceFile" type="file" accept=".bin" aria-label="Application firmware"><div class="button-grid"><button id="deviceUpload">Upload local firmware</button><button id="deviceCheck">Check for updates</button><button id="deviceInstall" disabled>Install online release</button><button id="deviceExitOta">Exit update mode</button></div><p id="deviceRelease"></p><p id="deviceMessage" role="status" aria-live="polite"></p>`;
+ document.querySelector('#settingsRobotBody').after(section);
+ const $=id=>section.querySelector('#'+id),message=text=>{$('deviceMessage').textContent=text;};let release=null,busy=false;
+ $('deviceAdmin').oninput=()=>{robot.adminPassword=$('deviceAdmin').value;};
+ $('deviceLanguage').value=language();$('deviceLanguage').onchange=()=>setLanguage($('deviceLanguage').value);
+ const command=(type,extra={})=>robot.request({type,...extra,admin_password:$('deviceAdmin').value});
+ async function refresh(){const info=await command('device_status');$('deviceInfo').textContent=[info.device_id,info.firmware_version,info.network_state,info.ip,info.error].filter(Boolean).join(' · ');$('deviceLeft').checked=info.calibration.left_invert;$('deviceRight').checked=info.calibration.right_invert;$('deviceSwap').checked=info.calibration.swap;}
+ const action=(id,fn)=>{$(id).onclick=async()=>{if(busy)return;busy=true;$(id).disabled=true;try{await fn();}catch(e){message(e.message);}finally{busy=false;$(id).disabled=false;}};};
+ action('deviceWifiConnect',async()=>{await robot.connectWifi($('deviceHost').value,$('deviceAdmin').value);await refresh();message('Wi-Fi connected');});
+ action('deviceDiscover',async()=>{const response=await fetch('/api/device/discover',{headers:{'X-Looi-Bridge':'1'}}),items=await response.json();if(!response.ok)throw Error(items.message);$('deviceFound').replaceChildren();for(const item of items){const b=document.createElement('button');b.textContent=item.name+' · '+item.host;b.onclick=()=>{$('deviceHost').value=item.host;};$('deviceFound').append(b);}if(!items.length)message('No devices found. Enter the device IP manually.');});
+ action('deviceRefresh',refresh);
+ action('deviceScan',async()=>{let result=await command('wifi_scan');while(result.scanning){await new Promise(r=>setTimeout(r,1000));result=await command('wifi_scan');}$('deviceNetworks').replaceChildren();for(const n of result.networks){const b=document.createElement('button');b.textContent=n.ssid+' · '+n.rssi+' dBm';b.onclick=()=>{$('deviceSsid').value=n.ssid;};$('deviceNetworks').append(b);}});
+ action('deviceConfigure',async()=>{await command('wifi_configure',{ssid:$('deviceSsid').value,password:$('devicePassword').value});$('devicePassword').value='';message('Connecting. Refresh device status shortly to see the IP.');});
+ action('deviceForget',async()=>{await command('wifi_forget');message('Network forgotten');});
+ const mapping=async values=>{await command('calibration_set',values);await refresh();message('Direction saved');};
+ action('deviceSave',()=>mapping({left_invert:$('deviceLeft').checked,right_invert:$('deviceRight').checked,swap:$('deviceSwap').checked}));action('deviceReset',()=>mapping({reset:true}));action('deviceReverseForward',()=>mapping({shortcut:'reverse_forward'}));action('deviceReverseSteering',()=>mapping({shortcut:'reverse_steering'}));
+ for(const[direction,title]of Object.entries({forward:'Forward',backward:'Backward',left:'Left',right:'Right',left_forward:'Left motor +',left_backward:'Left motor −',right_forward:'Right motor +',right_backward:'Right motor −'})){const b=document.createElement('button');b.textContent=title;b.onclick=async()=>{if(busy)return;busy=true;try{await command('control_acquire',{takeover:true});await command('calibration_test',{direction});message('Test sent: 300 ms');}catch(e){message(e.message);}finally{busy=false;}};$('deviceTests').append(b);}
+ action('deviceTakeControl',async()=>{await command('control_acquire',{takeover:true});message('Control acquired');});
+ $('deviceStop').onclick=async()=>{try{await robot.request({type:'stop'});message('Stopped');}catch(e){message(e.message);}};
+ const network=()=>{if(!robot.wifi)throw Error('Connect over Wi-Fi before uploading firmware');return robot.wifi;};
+ action('deviceUpload',async()=>{const n=network(),file=$('deviceFile').files[0];if(!file)throw Error('Choose an application .bin');message('Uploading firmware. Keep power connected.');await n.upload(file);await robot.disconnect();message('Update accepted. Reconnect and verify the version.');});
+ action('deviceCheck',async()=>{network();release=await robot.wifi.release();$('deviceRelease').textContent=release.version+' · '+release.size+' bytes';$('deviceInstall').disabled=false;});
+ action('deviceInstall',async()=>{const n=network();message('Downloading and installing firmware. Keep power connected.');await n.install(release);await robot.disconnect();message('Update accepted. Reconnect and verify the version.');});
+ action('deviceExitOta',async()=>{await command('ota_exit');message('Update mode exited');});
+ return section;
+}

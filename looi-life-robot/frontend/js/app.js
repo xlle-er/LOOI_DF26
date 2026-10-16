@@ -1,3 +1,9 @@
+import { installSettingsNavigation } from "./ui/settingsNavigation.js";
+import { migrateStoredScenes } from "./device/scenarioMigration.js";
+migrateStoredScenes();
+import { initializeLanguage } from "./ui/locale.js";
+import { mountDeviceManagement } from "./device/management.js";
+initializeLanguage();
 import { PUBLIC_CONFIG } from "./config.js";
 import { apiUrl, configureBackendBaseUrl } from "./core/apiBase.js";
 import { LocalEventBus } from "./core/localEventBus.js";
@@ -893,6 +899,8 @@ async function init() {
     logger: (message, level = "info") => log(message, level)
   });
   registerRobotClientCallbacks(robotClient);
+  mountDeviceManagement(robotClient);
+  installSettingsNavigation();
   robotClient
     .refreshStatus?.()
     .then((status) => {
@@ -1880,6 +1888,8 @@ async function lockLandscapeSafe() {
     // Some mobile browsers only allow orientation from the PWA manifest.
   }
 }
+
+document.getElementById("gateDeviceManagementButton").addEventListener("click",()=>{document.dispatchEvent(new Event("looi-open-device-panel"));setSettingsOpen(true);setTimeout(()=>document.getElementById("deviceManagement")?.scrollIntoView({block:"start"}),100);});
 
 function setSettingsOpen(open) {
   settingsOpen = Boolean(open);

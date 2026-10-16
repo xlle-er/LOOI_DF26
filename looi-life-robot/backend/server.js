@@ -1,4 +1,5 @@
 import cors from "cors";
+import { createDeviceBridge } from "./lib/device/bridge.js";
 import dotenv from "dotenv";
 import express from "express";
 import http from "node:http";
@@ -98,6 +99,7 @@ const PUBLIC_CONFIG = {
 
 app.set("trust proxy", true);
 app.use(cors());
+app.use("/api/device", createDeviceBridge());
 app.use(express.json({ limit: "1mb" }));
 app.use(apiTraceMiddleware);
 // DISABLED_ROBOFLOW_FOLLOW: keep the dependency installed, but do not serve the browser SDK.
