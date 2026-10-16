@@ -1,7 +1,10 @@
-const CACHE_NAME = "looi-pwa-v12";
+const CACHE_NAME = "looi-pwa-v13";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./apps.html",
+  "./apps.css",
+  "./js/ui/locale.js",
   "./styles.css",
   "./runtime-config.js",
   "./manifest.webmanifest",

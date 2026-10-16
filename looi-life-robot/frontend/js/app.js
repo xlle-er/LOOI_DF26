@@ -36,7 +36,7 @@ import { ToolExecutor } from "./robot/toolExecutor.js";
 import { PerformanceMonitor } from "./runtime/performanceMonitor.js";
 import { ReliabilityManager } from "./runtime/reliabilityManager.js";
 import { WakeLockManager } from "./runtime/wakeLockManager.js";
-import { createPwaInstallController, registerPwaServiceWorker } from "./pwa.js";
+import { registerPwaServiceWorker } from "./pwa.js";
 import { createFaceController } from "./ui/faceCanvas.js";
 import { VisionState } from "./vision/visionState.js";
 import {
@@ -88,7 +88,6 @@ const ui = {
   canvas: document.getElementById("faceCanvas"),
   runtimeGate: document.getElementById("runtimeGate"),
   productionStartButton: document.getElementById("productionStartButton"),
-  downloadAppButton: document.getElementById("downloadAppButton"),
   gateConnectBluetoothButton: document.getElementById("gateConnectBluetoothButton"),
   gateBluetoothStatus: document.getElementById("gateBluetoothStatus"),
   gateBluetoothStatusLabel: document.getElementById("gateBluetoothStatusLabel"),
@@ -787,11 +786,6 @@ ui.localVisionSizeSlider?.addEventListener("input", () => {
 // ui.stopFollowingButton?.addEventListener("click", () => {});
 
 registerPwaServiceWorker({ logger: log });
-createPwaInstallController({
-  button: ui.downloadAppButton,
-  logger: log,
-  fallbackMessage: "Use your browser menu to install LOOI."
-});
 init();
 
 async function init() {

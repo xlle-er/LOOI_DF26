@@ -361,6 +361,18 @@ AI & vision|AI 与视觉
 
 Take control|接管控制
 Control acquired|已接管控制
+LOOI Apps|LOOI 客户端
+Choose your LOOI app|选择你的 LOOI 客户端
+Bring LOOI to your phone. Choose your platform to get started.|在手机上使用 LOOI，选择你的平台开始安装。
+Download the APK, then open it on your Android phone to install.|下载 APK 文件，在安卓手机上打开安装。
+Android 7.0 or later|Android 7.0 及以上
+Download Android APK|下载 Android 安装包
+Open the iOS repository for source code and build instructions. Build and install with Xcode using your own Apple signing account.|前往 iOS 仓库获取源码和构建说明，使用 Xcode 和自己的 Apple 签名账号编译安装。
+iOS 15 or later · Xcode required|iOS 15 及以上 · 需要 Xcode
+Open iOS repository|打开 iOS 仓库
+Back to LOOI|返回 LOOI
+Android 0.2.0 · Experimental preview|Android 0.2.0 · 实验预览版
+Choose a platform|选择平台
 `.trim().split('\n').map(line=>line.split('|'));
 const zh=new Map(entries),en=new Map(entries.map(([a,b])=>[b,a]));
 let selected=localStorage.getItem('looi.ui.language')||(navigator.language.startsWith('zh')?'zh-CN':'en');
