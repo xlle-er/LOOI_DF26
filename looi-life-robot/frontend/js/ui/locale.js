@@ -385,7 +385,7 @@ Open the iOS repository for source code and build instructions. Build and instal
 iOS 15 or later · Xcode required|iOS 15 及以上 · 需要 Xcode
 Open iOS repository|打开 iOS 仓库
 Back to LOOI|返回 LOOI
-Android 0.2.0 · Experimental preview|Android 0.2.0 · 实验预览版
+Android 0.2.1 · Experimental preview|Android 0.2.1 · 实验预览版
 Choose a platform|选择平台
 `.trim().split('\n').map(line=>line.split('|'));
 const zh=new Map(entries),en=new Map(entries.map(([a,b])=>[b,a]));
