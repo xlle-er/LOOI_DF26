@@ -1,3 +1,5 @@
+import {compareReleaseVersions} from '../../../frontend/js/device/updatePolicy.js';
+export {compareReleaseVersions};
 import express from 'express';
 import {randomUUID} from 'node:crypto';
 import dgram from 'node:dgram';
@@ -17,15 +19,6 @@ export function manifestForBoard(board='n16r8',channel='stable'){
  return channel==='preview'?url.replace('/latest/download/','/download/preview/'):url;
 }
 // Opening preview updates includes both feeds; only a higher version beats stable.
-export function compareReleaseVersions(lhs,rhs){
- const parts=s=>{const [core,pre]=s.replace(/^v/,'').split('+')[0].split(/-(.*)/s);return [core.split('.'),pre?.split('.')];};
- const number=(a,b)=>{a=a.replace(/^0+/,'');b=b.replace(/^0+/,'');return a.length===b.length?(a===b?0:a>b?1:-1):a.length>b.length?1:-1;};
- const [a,ap]=parts(lhs),[b,bp]=parts(rhs);
- for(let i=0;i<Math.max(a.length,b.length);i++){const n=number(a[i]||'0',b[i]||'0');if(n)return n;}
- if(!ap||!bp)return ap===bp?0:ap?-1:1;
- for(let i=0;i<Math.min(ap.length,bp.length);i++){if(ap[i]===bp[i])continue;const an=/^\d+$/.test(ap[i]),bn=/^\d+$/.test(bp[i]);return an&&bn?number(ap[i],bp[i]):an!==bn?(an?-1:1):ap[i]>bp[i]?1:-1;}
- return Math.sign(ap.length-bp.length);
-}
 export async function selectRelease(board='n16r8',channel='stable',fetchManifest=async url=>validRelease(JSON.parse((await releaseFetch(url,8192)).toString()))){
  const stableURL=manifestForBoard(board,'stable');manifestForBoard(board,channel);
  const load=async(url,channel)=>({...validRelease(await fetchManifest(url)),channel});
@@ -35,13 +28,13 @@ export async function selectRelease(board='n16r8',channel='stable',fetchManifest
  if(stable.status==='fulfilled')return stable.value;
  throw stable.reason;
 }
-async function releaseFetch(url,limit){
+async function releaseFetch(url,limit,onChunk){
   for(let i=0;i<6;i++){
     const u=new URL(url);if(u.protocol!=='https:'||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'].includes(u.hostname))throw Error('Untrusted release redirect');
     const r=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(20000)});
     if([301,302,307,308].includes(r.status)){url=new URL(r.headers.get('location'),u).href;await r.body?.cancel();continue;}
     if(!r.ok)throw Error(`Release unavailable: HTTP ${r.status}`);
-    let size=0;const chunks=[];for await(const part of r.body){size+=part.length;if(size>limit)throw Error('Release exceeds size limit');chunks.push(part);}return Buffer.concat(chunks);
+    let size=0;const chunks=[];for await(const part of r.body){size+=part.length;if(size>limit)throw Error('Release exceeds size limit');chunks.push(part);if(onChunk)await onChunk(part);}return Buffer.concat(chunks);
   }throw Error('Too many redirects');
 }
 export function createDeviceBridge(){
@@ -53,7 +46,7 @@ export function createDeviceBridge(){
     res.set('Cache-Control','no-store');next();
   }catch(e){res.status(403).json({message:e.message});}});
   router.use(express.json({limit:'16kb'}));
-  const safe=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(502).json({message:e.message});}};
+  const safe=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){if(res.headersSent)res.destroy(e);else{res.removeHeader('Content-Length');res.status(502).json({message:e.message});}}};
   async function device(s,path,options={}){
     const headers={Authorization:'Basic '+Buffer.from(`admin:${s.password}`).toString('base64'),'X-Looi-Client':s.client,'X-OTA-Token':s.token??'',...options.headers};
     const r=await fetch(`http://${s.host}${path}`,{...options,headers,redirect:'error',signal:AbortSignal.timeout(path==='/update'?180000:15000)});
@@ -70,7 +63,7 @@ export function createDeviceBridge(){
     res.json(await device(s,'/update',{method:'POST',body:form,headers:{'X-Firmware-Size':String(bytes.length),'X-Firmware-SHA256':req.get('X-Firmware-SHA256')??''}}));
   }));
   router.get('/release',safe(async(req,res)=>res.json(await selectRelease(req.query.board,req.query.channel))));
-  router.get('/release/binary',safe(async(req,res)=>{const m=await selectRelease(req.query.board,req.query.channel);const bytes=await releaseFetch(m.url,3145728);res.set('X-Firmware-SHA256',m.sha256).type('application/octet-stream').send(bytes);}));
+  router.get('/release/binary',safe(async(req,res)=>{const m=await selectRelease(req.query.board,req.query.channel);res.set('X-Firmware-SHA256',m.sha256).set('Content-Length',String(m.size)).type('application/octet-stream');await releaseFetch(m.url,m.size,chunk=>res.write(chunk));res.end();}));
   router.get('/discover',safe(async(_req,res)=>res.json(await discoverDevices())));
   return router;
 }

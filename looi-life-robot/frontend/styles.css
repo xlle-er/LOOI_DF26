@@ -5081,3 +5081,9 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible {o
 .device-debug [hidden] { display:none !important; }
 .device-access { max-width:440px; }
 @media(max-width:480px){.device-debug{padding:12px;}.device-debug nav{gap:6px;}.device-debug .button-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.device-wiring-notice { border:2px solid #ffa642; border-radius:16px; background:#432b13; color:#ffe1b5; padding:16px; display:grid; gap:12px; margin-block:12px; }
+.device-wiring-notice[hidden] { display:none; }
+.device-wiring-notice button { background:#ffad48; color:#201300; min-height:44px; font-weight:700; }
+#deviceProgressGroup { margin-block:14px; }
+#deviceProgress { width:100%; height:18px; accent-color:#64c8dd; }
