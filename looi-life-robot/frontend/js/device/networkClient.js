@@ -3,7 +3,7 @@ import {verifyFirmware,savePreparedFirmware,loadPreparedFirmware,preparedAllowed
 export class DeviceNetworkClient {
   constructor({onLost=()=>{}}={}){this.session='';this.client='';this.info={};this.onLost=onLost;this.poll=null;this.busy=false;this.epoch=0;this.controlToken=0;this.motionEpoch=0;}
   async bridge(path,{body,bytes,headers={}}={}){
-    const response=await fetch('/api/device'+path,{method:body||bytes?'POST':'GET',headers:{'X-Looi-Bridge':'1','X-Looi-Session':this.session,...(body?{'Content-Type':'application/json'}:{}),...headers},body:bytes??(body?JSON.stringify(body):undefined)});
+    const response=await fetch('/api/device'+path,{cache:'no-store',method:body||bytes?'POST':'GET',headers:{'X-Looi-Bridge':'1','X-Looi-Session':this.session,...(body?{'Content-Type':'application/json'}:{}),...headers},body:bytes??(body?JSON.stringify(body):undefined)});
     const result=await response.json();if(!response.ok)throw Error(result.message||'Device bridge unavailable');return result;
   }
   async connect(host,password){const r=await this.bridge('/connect',{body:{host,password}});this.session=r.session;this.client=r.client;this.info=r.info;if(r.info.hardware_profile?.board)localStorage.setItem('looi.board',r.info.hardware_profile.board);this.startPolling();return r.info;}

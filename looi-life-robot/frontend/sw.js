@@ -1,4 +1,4 @@
-const CACHE_NAME = "looi-pwa-v15";
+const CACHE_NAME = "looi-pwa-v16";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  if (url.pathname.endsWith("/runtime-config.js") || url.pathname.startsWith("/firmware/")) {
+  if (url.pathname.startsWith("/api/") || url.pathname.endsWith("/runtime-config.js") || url.pathname.startsWith("/firmware/")) {
     event.respondWith(fetch(request));
     return;
   }
@@ -56,8 +56,8 @@ self.addEventListener("fetch", (event) => {
       }
 
       return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        if (response.ok) { const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)); }
         return response;
       });
     })

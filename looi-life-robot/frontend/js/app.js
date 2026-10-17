@@ -894,6 +894,7 @@ async function init() {
   });
   registerRobotClientCallbacks(robotClient);
   mountDeviceManagement(robotClient);
+  document.addEventListener("looi-device-authenticated", () => { applyCalibrationToRobot({ quiet: true }).catch(() => {}); });
   installSettingsNavigation();
   robotClient
     .refreshStatus?.()
@@ -1883,7 +1884,7 @@ async function lockLandscapeSafe() {
   }
 }
 
-document.getElementById("gateDeviceManagementButton").addEventListener("click",()=>{document.dispatchEvent(new Event("looi-open-device-panel"));setSettingsOpen(true);setTimeout(()=>document.getElementById("deviceManagement")?.scrollIntoView({block:"start"}),100);});
+document.getElementById("gateDeviceManagementButton").addEventListener("click",()=>{document.dispatchEvent(new Event("looi-open-device-panel"));});
 
 function setSettingsOpen(open) {
   settingsOpen = Boolean(open);

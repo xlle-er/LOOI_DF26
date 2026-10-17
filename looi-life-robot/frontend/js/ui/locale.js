@@ -389,6 +389,31 @@ Open iOS repository|打开 iOS 仓库
 Back to LOOI|返回 LOOI
 Android 0.2.1 · Experimental preview|Android 0.2.1 · 实验预览版
 Choose a platform|选择平台
+Debug robot|调试机器人
+Motor tests|马达测试
+Management settings|管理设置
+Enter update mode|进入升级模式
+Update via hotspot|改用热点升级
+Download firmware|下载固件
+Connect hotspot|连接热点
+Install OTA update|安装 OTA 更新
+Upload bin package|上传 bin 更新包
+Choose local .bin|选择本地 .bin
+Verify installed version|核对升级版本
+Manual IP override (optional)|手动指定 IP（可选）
+Robot name (Chinese supported)|机器人名字（支持中文）
+Change robot name|修改机器人名字
+New admin password|新管理密码
+Change admin password|修改管理密码
+Re-enter admin password|重新输入管理密码
+Lift the wheels. Tests last at most 300 ms.|先架空车轮，点动最多 300 毫秒。
+Update firmware to change the name and password.|升级固件后可修改名称和密码。
+Done|完成
+Save|保存
+Later|稍后
+Debug sections|调试分区
+Connect LAN robot|连接局域网机器人
+Connect robot|连接机器人
 `.trim().split('\n').map(line=>line.split('|'));
 const zh=new Map(entries),en=new Map(entries.map(([a,b])=>[b,a]));
 let selected=localStorage.getItem('looi.ui.language')||(navigator.language.startsWith('zh')?'zh-CN':'en');

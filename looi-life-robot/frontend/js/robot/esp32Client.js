@@ -25,7 +25,7 @@ export class ESP32Client {
     minDurationMs = MIN_DURATION_MS,
     bluetooth = globalThis.navigator?.bluetooth
   } = {}) {
-    this.adminPassword = "12345678";
+    this.adminPassword = "";
     this.results = new Map();
     this.sendEpoch = 0;
     this.requireAck = true;
@@ -70,6 +70,7 @@ export class ESP32Client {
   async connect() {
     this.ensureWebBluetoothAvailable();
     if (this.isConnected()) { try { await this.request({type:"stop"}); } finally { await this.disconnect(); } }
+    this.adminPassword = "";
     this.connecting = true;
     this.readyState = READY_STATE.CONNECTING;
     this.emitStatus();
@@ -78,8 +79,8 @@ export class ESP32Client {
     try {
       const device = await this.bluetooth.requestDevice({
         filters: [
-          { name: BLE_DEVICE_NAME },
-          { namePrefix: "LOOI" }
+          { services: [BLE_SERVICE_UUID] },
+          { name: BLE_DEVICE_NAME }
         ],
         optionalServices: [BLE_SERVICE_UUID]
       });
@@ -246,6 +247,7 @@ export class ESP32Client {
   }
 
   sendConfigUpdate(config = {}) {
+    if (!this.adminPassword) throw Error("Device administrator password required");
     return this.sendJson({
       type: "config_update",
       admin_password: this.adminPassword,
