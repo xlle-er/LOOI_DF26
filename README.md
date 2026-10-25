@@ -6,6 +6,8 @@
 
 LOOI DF26 是以手机作为语音、视觉和表情界面的桌面机器人。本仓库的 **DF26 分支**提供中英双语网页端，支持 BLE 与局域网 Wi-Fi 控制，以及配网、电机方向校准和无线固件升级。最终底盘仅使用直流电机，不包含俯仰舵机或 I²C。
 
+当前网页端为 **1.3.0**：新增四页面响应式界面、人格与通用配置、可调场景、Life Engine、本地检测/跟随、离线唤醒和集中诊断。模型与运行库随后端部署，浏览器下载校验后在本机推理。参见 [功能与部署说明](looi-life-robot/docs/web-1.3.0/README.md) 和 [手机验收表](looi-life-robot/docs/web-1.3.0/PHONE-ACCEPTANCE.md)。
+
 ### 项目仓库
 
 | 仓库 | 用途 |
@@ -26,7 +28,7 @@ npm ci
 npm start
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)。在右上角选择简体中文或 English，选择会保存在本机浏览器。
+打开 [http://localhost:3000](http://localhost:3000)。在设置页选择简体中文或 English，选择会保存在本机浏览器。
 
 - 首次通过 USB 安装 Firmware 仓库中的 ESP32-S3 固件，严格使用 16 MB Flash 和双 3 MB OTA 分区；不要刷入旧 ESP32 固件。
 - 手机或电脑连接 `LOOI-Setup-XXXXXX` 热点，打开 [http://192.168.4.1](http://192.168.4.1) 配网，或在原生 App 中通过 BLE 配网。初始管理用户名 `admin`，密码见固件说明。
@@ -53,7 +55,7 @@ LOOI DF26 is a desktop robot that uses a phone for voice, vision and facial anim
 
 ### Run locally
 
-Use Node.js 22 or newer. Run the commands above, then open [http://localhost:3000](http://localhost:3000). Choose English or 简体中文 in the top-right corner; the selection persists in this browser.
+Use Node.js 22 or newer. Run the commands above, then open [http://localhost:3000](http://localhost:3000). Choose English or 简体中文 in Settings; the selection persists in this browser.
 
 Install the ESP32-S3 firmware over USB once, with **16 MB Flash and dual 3 MB OTA application partitions**. Join the `LOOI-Setup-XXXXXX` hotspot and open [http://192.168.4.1](http://192.168.4.1), or provision Wi-Fi through BLE in a native app. Check the Firmware README for the initial administrator password.
 

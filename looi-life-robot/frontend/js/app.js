@@ -1,3 +1,4 @@
+import { CompanionRuntime } from "./companion/runtime.js";
 import { installSettingsNavigation } from "./ui/settingsNavigation.js";
 import { migrateStoredScenes } from "./device/scenarioMigration.js";
 migrateStoredScenes();
@@ -285,6 +286,7 @@ let followTargetController = null;
 let visionScenarioManager = null;
 let bodyCalibration = null;
 let personalityTuning = null;
+let companionRuntime = null;
 let lifeEventEmitter = null;
 let toolExecutor = null;
 let idleScenarioScheduler = null;
@@ -473,6 +475,7 @@ ui.lifeEventsToggle.addEventListener("change", () => {
 });
 
 ui.localMotionArmedToggle.addEventListener("change", () => {
+  if(companionRuntime&&companionRuntime.bodyArmed!==ui.localMotionArmedToggle.checked){if(ui.localMotionArmedToggle.checked){companionRuntime.bodyArmed=true;companionRuntime.updateButtons();}else companionRuntime.stopBody();}
   patchBrainPolicy({ localMotionArmed: ui.localMotionArmedToggle.checked });
   log(
     brainPolicy.localMotionArmed
@@ -1082,6 +1085,8 @@ async function init() {
     updateAttentionUi();
     updateGeminiVisionAssistUi();
   }, 1000);
+  companionRuntime = new CompanionRuntime({cancelLegacy:reason=>immediateStop(reason,"Previous motion tasks cancelled."),eventBus:localEventBus,robot:robotClient,queue:commandQueue,life:lifeEngine,personality:personalityTuning,camera:cameraInput,live:geminiLiveRuntime,brain:localBrainEngine,adapter:localServerBrainAdapter,oldIdle:idleScenarioScheduler,lifeEvents:lifeEventEmitter,getConfig:()=>activeConfig,pose:requestPoseScenario});
+  await companionRuntime.initialize();
   log("UI ready.");
   log("Local-first runtime active.");
   log("Local Motion is disarmed by default. Arm only while supervised.");
@@ -1245,6 +1250,7 @@ async function handleLocalTextInput(input = {}) {
   const source = "typed";
   const eventType = "user_text";
   const gateResult = classifyLocalTextInput(text);
+  if(!gateResult.shouldImmediateStop) await companionRuntime?.prepareInput();
   traceLive("STEP 1 LOCAL_INPUT", {
     text,
     source,
@@ -1310,6 +1316,7 @@ async function handleLocalTextInput(input = {}) {
   });
 
   if (gateResult.shouldImmediateStop) {
+    await companionRuntime?.stopBody();
     await immediateStop(
       "local_typed_stop",
       "Local typed stop phrase detected.",
@@ -1321,6 +1328,7 @@ async function handleLocalTextInput(input = {}) {
     requestPoseScenario("pose_curious");
   }
 
+  if(gateResult.accepted&&!gateResult.shouldImmediateStop) await companionRuntime?.sendText(text,event);
   updateAttentionUi();
   updateLocalBrainUi();
   return {
@@ -1603,6 +1611,7 @@ function normalizeLocalEventType(event = {}) {
 }
 
 function isLocalStopPhrase(text) {
+  if(/停止|停下|别动|不要动|紧急停止/.test(text)) return true;
   const normalized = text
     .toLowerCase()
     .replace(/[’`]/g, "'")
@@ -2617,17 +2626,9 @@ function patchBrainPolicy(partial = {}) {
   updateLocalBrainUi();
 }
 
-function armMovementForScenario({ requestedLabel = "", resolvedLabel = "" } = {}) {
-  const wasArmed = Boolean(brainPolicy.localMotionArmed);
-
-  patchBrainPolicy({
-    localMotionArmed: true
-  });
-
-  if (!wasArmed) {
-    const targetText = resolvedLabel || requestedLabel || "target";
-    log(`Movement auto-armed for ${targetText}.`, "warn");
-  }
+function armMovementForScenario() {
+  // Explicit permission is owned by the companion coordinator.
+  if(!companionRuntime?.bodyArmed) log("Enable body motion on the Robot page before running a body scene.","warn");
 }
 
 function getPolicy() {
@@ -2849,7 +2850,7 @@ function clearConversationSilenceTimer() {
 }
 
 function isConversationGateActive() {
-  return conversationGateState === "active";
+  return companionRuntime ? companionRuntime.active && companionRuntime.wake.phase === "conversation" : conversationGateState === "active";
 }
 
 function isConversationWakeRequired() {
@@ -3120,6 +3121,7 @@ function isRecentUserTranscript(geminiStatus = {}, now = Date.now()) {
 }
 
 async function sendIdleBodyContextToGemini(payload = {}, reason = "idle_body_context") {
+  if(companionRuntime) return false;
   if (!geminiLiveRuntime?.sendQuietContext) {
     return false;
   }
@@ -3560,7 +3562,7 @@ function getIdleRuntimeStatus() {
 function getExecutionPolicy() {
   return {
     source: "local",
-    localMotionArmed: brainPolicy.localMotionArmed,
+    localMotionArmed: companionRuntime?.bodyArmed ?? brainPolicy.localMotionArmed,
     followLostTimeoutMs: brainPolicy.followLostTimeoutMs,
     followTargetCenterX: brainPolicy.followTargetCenterX,
     followCenterDeadband: brainPolicy.followCenterDeadband,
@@ -3594,7 +3596,7 @@ function getRuntimeContext() {
     reliabilityStatus: reliabilityManager?.getStatus?.() ?? null,
     geminiLive: geminiLiveRuntime?.getStatus?.() ?? null,
     calibration: bodyCalibration?.getSettings?.() ?? null,
-    personality: describePersonalityForRuntime(personalityTuning?.getProfile?.()),
+    personality: companionRuntime?.config.profile ?? personalityTuning?.getProfile?.(),
     lifeSignals: {
       loneliness: lifeState?.loneliness,
       comfort: lifeState?.comfort,
